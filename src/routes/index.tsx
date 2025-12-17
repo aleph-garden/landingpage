@@ -220,9 +220,12 @@ const translations = {
   }
 };
 
+type FXMode = 'OFF' | 'MID' | 'HIG';
+
 export default component$(() => {
-  const visualsEnabled = useSignal(true);
+  const fxMode = useSignal<FXMode>('MID');
   const language = useSignal<'en' | 'de' | 'vn'>('en');
+  const mobileMenuOpen = useSignal(false);
 
   // Timeline configuration
   const timelineStart = new Date(1945, 0, 1);
@@ -357,11 +360,11 @@ export default component$(() => {
 
   // Load visuals and language preferences
   useVisibleTask$(() => {
-    // Load visuals preference from localStorage or default to enabled
-    const savedVisuals = localStorage.getItem('visuals');
-    const initialVisuals = savedVisuals !== 'disabled';
-    visualsEnabled.value = initialVisuals;
-    document.documentElement.setAttribute('data-visuals', initialVisuals ? 'enabled' : 'disabled');
+    // Load FX mode preference from localStorage or default to MID
+    const savedMode = localStorage.getItem('aleph-fx-mode') as FXMode | null;
+    const initialMode: FXMode = savedMode && ['OFF', 'MID', 'HIG'].includes(savedMode) ? savedMode : 'MID';
+    fxMode.value = initialMode;
+    document.documentElement.setAttribute('data-fx-mode', initialMode.toLowerCase());
 
     // Load language preference from localStorage or default to English
     const savedLanguage = localStorage.getItem('language') as 'en' | 'de' | 'vn' | null;
@@ -463,14 +466,24 @@ export default component$(() => {
   }); */
 
   // Advanced multi-layer RGB glitch system
-  useVisibleTask$(({ track }) => {
-    track(() => visualsEnabled.value);
+  useVisibleTask$(({ track, cleanup }) => {
+    track(() => fxMode.value);
 
     const container = document.querySelector('.aleph-logo-container');
     const mainLogo = document.querySelector('.aleph-logo');
     if (!container || !mainLogo) return;
 
-    const sliceCount = 40;
+    // Clean up existing glitch layers to prevent accumulation
+    const existingWrappers = container.querySelectorAll('.red-channel-wrapper, .cyan-channel-wrapper, .green-channel-wrapper');
+    existingWrappers.forEach(wrapper => wrapper.remove());
+
+    // Adjust slice count based on mode
+    const sliceCountMap: Record<FXMode, number> = {
+      'OFF': 0,   // No layers for OFF mode
+      'MID': 0,   // No glitch layers for MID mode (only breathing glow)
+      'HIG': 40   // Full layers for HIG mode
+    };
+    const sliceCount = sliceCountMap[fxMode.value];
     const layers: { element: HTMLElement; type: 'red' | 'cyan' | 'green' }[] = [];
 
     // Create RGB channel layers with multiple slices each
@@ -620,10 +633,20 @@ export default component$(() => {
       }
     };
 
+    // Track timeout IDs for cleanup
+    let glitchTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let burstTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let shakeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let isActive = true;
+
     // Main glitch loop
     const glitchLoop = () => {
-      // Only apply effects if visuals are enabled
-      if (visualsEnabled.value) {
+      if (!isActive) return;
+
+      const mode = fxMode.value;
+
+      // Apply effects based on mode (HIG only)
+      if (mode === 'HIG') {
         // Randomly trigger different effects
         const effectTypes = Object.values(effects);
         const selectedEffect = effectTypes[Math.floor(Math.random() * effectTypes.length)];
@@ -634,7 +657,7 @@ export default component$(() => {
 
           // Quick reset after brief display
           setTimeout(() => {
-            resetLayers();
+            if (isActive) resetLayers();
           }, 40 + Math.random() * 40);
         }
 
@@ -642,8 +665,11 @@ export default component$(() => {
         if (Math.random() > 0.85) {
           effects.chromaticShift();
           setTimeout(() => {
+            if (!isActive) return;
             effects.scanlineJitter();
-            setTimeout(resetLayers, 50);
+            setTimeout(() => {
+              if (isActive) resetLayers();
+            }, 50);
           }, 20);
         }
 
@@ -652,49 +678,71 @@ export default component$(() => {
           element.style.transition = 'all 40ms cubic-bezier(0.4, 0, 0.2, 1)';
         });
       } else {
-        // Reset all layers when FX is disabled
+        // Reset all layers when in OFF or MID mode
         resetLayers();
       }
 
       // Random timing between glitches
       const nextGlitch = Math.random() > 0.7 ? 80 + Math.random() * 150 : 200 + Math.random() * 600;
-      setTimeout(glitchLoop, nextGlitch);
+      glitchTimeoutId = setTimeout(glitchLoop, nextGlitch);
     };
 
     // Intense glitch burst occasionally
     const burstLoop = () => {
-      // Only apply bursts if visuals are enabled
-      if (visualsEnabled.value) {
+      if (!isActive) return;
+
+      const mode = fxMode.value;
+
+      // Only apply bursts in HIG mode
+      if (mode === 'HIG') {
         const rand = Math.random();
         if (rand > 0.85) {
           effects.corruptionBurst();
           shakeContainer();
-          setTimeout(resetLayers, 60);
+          setTimeout(() => {
+            if (isActive) resetLayers();
+          }, 60);
         } else if (rand > 0.75) {
           effects.halfSplitFlicker();
           shakeContainer();
-          setTimeout(resetLayers, 50);
+          setTimeout(() => {
+            if (isActive) resetLayers();
+          }, 50);
         } else if (rand > 0.65) {
           effects.massiveShift();
           shakeContainer();
-          setTimeout(resetLayers, 55);
+          setTimeout(() => {
+            if (isActive) resetLayers();
+          }, 55);
         }
       }
-      setTimeout(burstLoop, 1500 + Math.random() * 2500);
+      burstTimeoutId = setTimeout(burstLoop, 1500 + Math.random() * 2500);
     };
 
     // Continuous subtle shake
     const continuousShake = () => {
-      // Only shake if visuals are enabled
-      if (visualsEnabled.value) {
+      if (!isActive) return;
+
+      const mode = fxMode.value;
+
+      // Only shake in HIG mode
+      if (mode === 'HIG') {
         shakeContainer();
       }
-      setTimeout(continuousShake, 100 + Math.random() * 200);
+      shakeTimeoutId = setTimeout(continuousShake, 100 + Math.random() * 200);
     };
 
     glitchLoop();
     burstLoop();
     continuousShake();
+
+    // Cleanup function to stop all loops
+    cleanup(() => {
+      isActive = false;
+      if (glitchTimeoutId) clearTimeout(glitchTimeoutId);
+      if (burstTimeoutId) clearTimeout(burstTimeoutId);
+      if (shakeTimeoutId) clearTimeout(shakeTimeoutId);
+    });
   });
 
   // Initialize scrolling year effect
@@ -723,29 +771,54 @@ export default component$(() => {
     initScrollingYear();
   });
 
-  const toggleVisuals = $(() => {
-    visualsEnabled.value = !visualsEnabled.value;
-    document.documentElement.setAttribute('data-visuals', visualsEnabled.value ? 'enabled' : 'disabled');
-    localStorage.setItem('visuals', visualsEnabled.value ? 'enabled' : 'disabled');
+  const cycleFXMode = $(() => {
+    const modes: FXMode[] = ['OFF', 'MID', 'HIG'];
+    const currentIndex = modes.indexOf(fxMode.value);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    fxMode.value = modes[nextIndex];
+    document.documentElement.setAttribute('data-fx-mode', fxMode.value.toLowerCase());
+    localStorage.setItem('aleph-fx-mode', fxMode.value);
+    // Close mobile menu after selection
+    mobileMenuOpen.value = false;
   });
 
   const toggleLanguage = $(() => {
     language.value = language.value === 'en' ? 'de' : language.value === 'de' ? 'vn' : 'en';
     localStorage.setItem('language', language.value);
+    // Close mobile menu after selection
+    mobileMenuOpen.value = false;
+  });
+
+  const toggleMobileMenu = $(() => {
+    mobileMenuOpen.value = !mobileMenuOpen.value;
   });
 
   const t = translations[language.value];
 
   return (
     <>
-      {/* Controls - Top Right */}
-      <div class="controls">
+      {/* Burger Menu Button - Mobile Only */}
+      <button
+        class="burger-menu"
+        onClick$={toggleMobileMenu}
+        aria-label="Toggle menu"
+      >
+        <span class={mobileMenuOpen.value ? 'burger-line open' : 'burger-line'}></span>
+        <span class={mobileMenuOpen.value ? 'burger-line open' : 'burger-line'}></span>
+        <span class={mobileMenuOpen.value ? 'burger-line open' : 'burger-line'}></span>
+      </button>
+
+      {/* Mobile Menu Overlay */}
+      <div class={mobileMenuOpen.value ? 'mobile-menu-overlay open' : 'mobile-menu-overlay'} onClick$={toggleMobileMenu}></div>
+
+      {/* Controls - Top Right (Desktop) / Mobile Menu (Mobile) */}
+      <div class={mobileMenuOpen.value ? 'controls mobile-menu-open' : 'controls'}>
         <button
           class="control-btn"
-          onClick$={toggleVisuals}
-          aria-label="Toggle visual effects"
+          onClick$={cycleFXMode}
+          aria-label="Cycle FX quality mode"
         >
-          [{visualsEnabled.value ? t.controls.disableFx : t.controls.enableFx}]
+          [FX: {fxMode.value}]
         </button>
         <button
           class="control-btn"

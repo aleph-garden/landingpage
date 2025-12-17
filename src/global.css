@@ -27,7 +27,7 @@
 }
 
 body {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'Google Sans Mono', 'Courier New', monospace;
   background: radial-gradient(ellipse at center, #252525 0%, #151515 40%, #050505 70%);
   color: var(--text-primary);
   line-height: 1.6;
@@ -56,6 +56,11 @@ body::before {
   display: none !important;
 }
 
+/* Disable vignette in OFF mode */
+:root[data-fx-mode="off"] body::before {
+  display: none !important;
+}
+
 /* Scanlines */
 body::after {
   content: '';
@@ -79,6 +84,11 @@ body::after {
 
 /* Disable scanlines when visuals are off */
 :root[data-visuals="disabled"] body::after {
+  display: none !important;
+}
+
+/* Disable scanlines in OFF mode */
+:root[data-fx-mode="off"] body::after {
   display: none !important;
 }
 
@@ -137,7 +147,7 @@ body::after {
 
 /* Modern window button style */
 .btn-terminal {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'Google Sans Mono', 'Courier New', monospace;
   font-size: 1rem;
   padding: 0.75rem 1.5rem;
   background: rgba(20, 20, 20, 0.8);
