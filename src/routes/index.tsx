@@ -153,75 +153,75 @@ const translations = {
   },
   vn: {
     hero: {
-      think: 'think',
-      link: 'link',
-      remember: 'remember',
-      everything: 'everything',
+      think: 'suy nghĩ',
+      link: 'kết nối',
+      remember: 'ghi nhớ',
+      everything: 'mọi thứ',
     },
     terminal: {
-      viewSource: 'view source',
-      joinCommunity: 'join community',
+      viewSource: 'Xem nguồn',
+      joinCommunity: 'Cộng đồng',
     },
     controls: {
-      disableFx: 'DISABLE FX',
-      enableFx: 'ENABLE FX',
+      disableFx: 'ẨN FX', // Đồ họa
+      enableFx: 'BẬT FX',
     },
     kb: {
-      title: 'Your External Brain',
-      lead1: "You've read thousands of articles. Had hundreds of insights. Spent years accumulating knowledge.",
-      lead2: "But when you need that crucial piece of information?",
-      gone: "Gone.",
-      feature1Title: "Capture everything, instantly",
-      feature1Desc: "Ideas flow in chaos. Inbox first, organize later. No friction between thought and storage.",
-      feature2Title: "Connect like your brain does",
-      feature2Desc: "Not folders and hierarchies. Bidirectional links. Semantic relationships. Navigate by association, not location.",
-      feature3Title: "Find what you actually meant",
-      feature3Desc: "Search by meaning, not just keywords. Your future self will thank you.",
+      title: 'Bộ não bên ngoài của bạn',
+      lead1: "Bạn ĐÃ đọc hàng ngàn bài báo. ĐÃ có hàng tá nhận định đúc kết. ĐÃ dành nhiều năm để tích lũy kiến thức.",
+      lead2: "Nhưng khi bạn cần đến thông tin quan trọng đó?",
+      gone: "Biến mất!",
+      feature1Title: "Ghi lại mọi thứ, ngay lập tức",
+      feature1Desc: "Ý tưởng tuôn trào một cách hỗn loạn. Hộp thư đến dồn dập trước, sắp xếp chầm chậm theo sau. Không có sự mâu thuẫn giữa ý tưởng và việc lưu trữ.",
+      feature2Title: "Kết nối, như cách bộ não của bạn vận hành vậy.",
+      feature2Desc: "Không thư mục, không cấu trúc phân cấp. Liên kết hai chiều. Mối quan hệ ngữ nghĩa. Điều hướng theo liên kết, không phải theo vị trí.",
+      feature3Title: "Hãy tìm lại điều bạn thực sự muốn nói",
+      feature3Desc: "Hãy tìm kiếm theo ý nghĩa, chứ không chỉ dựa vào từ khóa. Chính bạn trong tương lai sẽ cảm ơn điều đó.",
     },
     promise: {
-      title: "The Information Age Made a Promise",
-      subtitle: "Unlimited information. Perfect recall. Connected knowledge.",
-      reality: "We're finally building it.",
-      quote: "We have all known people who were like 'walking encyclopedias,' clinging effortlessly to every fact they ever encountered.",
-      quoteStrong: "The Memex II promises to raise every individual to that level.",
-      problem1Title: "You're Drowning in Information",
-      problem1Desc: "Bookmarks you'll never read. Notes scattered across apps. Brilliant insights that vanish the moment you close the tab.",
-      problem1Stat: "90% of information you save is never seen again.",
-      problem1Solution: "Aleph captures everything in one place. Forever searchable. Always connected.",
-      problem2Title: "Ideas Die in Isolation",
-      problem2Desc: "That article on neuroscience relates to your project on learning systems. But you'll never make the connection.",
-      problem2Stat: "Breakthrough insights come from connecting distant ideas.",
-      problem2Solution: "Bidirectional links. Semantic connections. Your knowledge becomes a living network.",
-      problem3Title: "Folders Are a Lie",
-      problem3Desc: "Where did you save that note? Projects? Resources? Archive? It could be anywhere. Hierarchies force choices your brain never makes.",
-      problem3Stat: "You don't think in folders. Why organize that way?",
-      problem3Solution: "Navigate by association. Find by meaning. Think the way your brain actually works.",
-      problem4Title: "Your Data is Hostage",
-      problem4Desc: "Company shuts down. Service changes pricing. They own your knowledge graph, your years of accumulated notes.",
-      problem4Stat: "Google Reader. Vine. Yahoo GeoCities. Services die. Your data shouldn't.",
-      problem4Solution: "Open source. Self-hosted. Export anytime. Your knowledge, your control.",
+      title: "Kỷ nguyên thông tin đã đưa ra một lời hứa",
+      subtitle: "Thông tin không giới hạn. Khả năng ghi nhớ hoàn hảo. Kiến thức được kết nối.",
+      reality: "Cuối cùng thì chúng ta cũng đang xây dựng nó.",
+      quote: "Chúng ta đều từng quen biết những người giống như 'bách khoa toàn thư biết đi', dễ dàng nắm bắt mọi thông tin mà họ từng gặp.",
+      quoteStrong: "Memex II hứa hẹn sẽ nâng tầm mỗi cá nhân lên đẳng cấp đó.",
+      problem1Title: "Bạn đang tắm trong thông tin",
+      problem1Desc: "Thẻ đánh dấu trang, rồi chỉ dừng lại đó không. Ghi chú, nằm rải rác khắp các ứng dụng. Những ý tưởng tuyệt vời, chẳng còn gì khi bạn đóng tab.",
+      problem1Stat: "90% thông tin bạn lưu trữ sẽ không bao giờ được xem lại.",
+      problem1Solution: "Aleph lưu trữ mọi thứ ở cùng một nơi. Luôn có thể tìm kiếm. Luôn được kết nối.",
+      problem2Title: "Ý tưởng sẽ chết khi bị cô lập",
+      problem2Desc: "Bài báo về thần kinh học có liên quan đến dự án về hệ thống học tập của bạn, nhưng bạn sẽ không bao giờ tìm ra mối liên hệ đó.",
+      problem2Stat: "Tạo ra những hiểu biết đột phá từ việc kết nối những ý tưởng tưởng chừng như xa vời.",
+      problem2Solution: "Các liên kết hai chiều. Các kết nối ngữ nghĩa. Kiến thức của bạn trở thành một mạng lưới sống động.",
+      problem3Title: "Thư mục là một lời nói dối",
+      problem3Desc: "Bạn đã lưu ghi chú đó ở đâu? Dự án? Tài nguyên? Kho lưu trữ? Nó có thể ở bất cứ đâu. Cấu trúc phân cấp buộc bạn phải đưa ra những lựa chọn mà bộ não bạn không bao giờ tự nghĩ ra.",
+      problem3Stat: "Bạn không suy nghĩ theo kiểu thư mục. Tại sao lại sắp xếp theo cách đó?",
+      problem3Solution: "Tìm kiếm bằng liên tưởng. Tìm kiếm bằng ý nghĩa.\nSuy nghĩ bằng cách bộ não bạn thực sự hoạt động.",
+      problem4Title: "Dữ liệu của bạn đang bị giam giữ",
+      problem4Desc: "Công ty đóng cửa. Dịch vụ thay đổi giá cả. Họ sở hữu biểu đồ kiến ​​thức của bạn, những ghi chú bạn đã tích lũy trong nhiều năm.",
+      problem4Stat: "Google Reader. Vine. Yahoo GeoCities. Các dịch vụ có thể biến mất. Nhưng dữ liệu của bạn thì không nên.",
+      problem4Solution: "Mã nguồn mở. Tự lưu trữ. Xuất dữ liệu mọi lúc. Kiến thức của bạn, quyền kiểm soát chỉ có bạn.",
     },
     waitlist: {
-      title: 'Stay Updated',
-      subtitle: 'Get notified about new features, updates, and developments',
+      title: 'Luôn được cập nhật',
+      subtitle: 'Nhận thông báo về các tính năng mới, bản cập nhật và phát triển',
       emailPlaceholder: 'your@email.com',
-      submit: 'Subscribe',
-      submitting: 'Subscribing...',
-      success: 'Subscribed! Check your email.',
-      error: 'Something went wrong. Try again?',
+      submit: 'Đăng ký',
+      submitting: 'Đang đăng kí...',
+      success: 'Thành công! Kiểm tra email của bạn.',
+      error: 'Đã xảy ra lỗi. Vui lòng thử lại?',
     },
     footer: {
-      starGithub: 'star on github',
-      joinDiscord: 'join discord',
-      readVision: 'read the vision',
-      tagline1: 'Open source. Self-hosted. Your data, your control.',
-      tagline2: 'Building the future of personal knowledge',
+      starGithub: 'đánh giá trên github',
+      joinDiscord: 'Tham gia cộng đồng discord',
+      readVision: 'đọc thêm về ý tưởng',
+      tagline1: 'Mã nguồn mở. Tự lưu trữ. Dữ liệu của bạn, quyền kiểm soát thuộc về bạn.',
+      tagline2: 'Xây dựng tương lai của tri thức cá nhân',
     }
   }
 };
 
 export default component$(() => {
-  const visualsEnabled = useSignal(true);
+  const visualsEnabled = useSignal(false);
   const language = useSignal<'en' | 'de' | 'vn'>('en');
 
   // Timeline configuration
@@ -775,7 +775,7 @@ export default component$(() => {
           </div>
           <div class="hero-right">
             <div class="aleph-logo-container">
-              <div class="aleph-logo">ℵ</div>
+              {/*<div class="aleph-logo">ℵ</div>*/}
             </div>
           </div>
         </div>
