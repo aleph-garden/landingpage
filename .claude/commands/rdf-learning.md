@@ -100,66 +100,105 @@ For each user message:
 
 User asks: "Why were there protests in Iran in 2022?"
 
-You would append to `index.ttl`:
+You would execute this SPARQL UPDATE via curl:
 
-```turtle
-# Interaction on 2026-01-10 at 14:30:00
-<interaction:2026-01-10T14:30:00Z> a schema:InteractionAction ;
-    schema:agent <session:2026-01-10T14:23:45Z> ;
+```bash
+curl -X POST http://localhost:7878/sparql \
+  -H 'Content-Type: application/sparql-update' \
+  -d 'INSERT DATA {
+@prefix : <http://aleph-wiki.local/> .
+@prefix interaction: <http://aleph-wiki.local/interaction/> .
+@prefix concept: <http://aleph-wiki.local/concept/> .
+@prefix session: <http://aleph-wiki.local/session/> .
+@prefix schema: <http://schema.org/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+
+interaction:2026-01-10T14:30:00Z a schema:InteractionAction ;
+    schema:agent session:2026-01-10T14:23:45Z ;
     schema:participant :user ;
     schema:startTime "2026-01-10T14:30:00Z"^^xsd:dateTime ;
-    schema:object <concept:mahsa-amini-protests> ;
-    schema:result <concept:women-life-freedom> , <concept:morality-police> ;
+    schema:object concept:mahsa-amini-protests ;
+    schema:result concept:women-life-freedom , concept:morality-police ;
     schema:actionStatus schema:CompletedActionStatus ;
     rdfs:comment """The 2022 Iranian protests began after the death of Mahsa Amini in police custody.
     She was detained by morality police for allegedly improper hijab wearing. The protests became
-    a widespread movement under the slogan "Woman, Life, Freedom" (zan, zendegi, azadi),
+    a widespread movement under the slogan \"Woman, Life, Freedom\" (zan, zendegi, azadi),
     challenging both dress code enforcement and broader authoritarian governance."""@en .
 
-<concept:mahsa-amini-protests> a skos:Concept , schema:Event ;
+concept:mahsa-amini-protests a skos:Concept , schema:Event ;
     skos:prefLabel "2022 Iranian Protests"@en , "اعتراضات ایران ۱۴۰۱"@fa ;
     skos:altLabel "Mahsa Amini Protests"@en , "Woman Life Freedom Movement"@en ;
     schema:startDate "2022-09-16"^^xsd:date ;
     schema:location <http://dbpedia.org/resource/Iran> ;
-    skos:broader <concept:human-rights-movements> ;
-    skos:related <concept:women-life-freedom> , <concept:morality-police> ;
-    dct:subject <concept:womens-rights> , <concept:civil-disobedience> ;
+    skos:broader concept:human-rights-movements ;
+    skos:related concept:women-life-freedom , concept:morality-police ;
+    dct:subject concept:womens-rights , concept:civil-disobedience ;
     rdfs:comment "Mass protests in Iran triggered by the death of Mahsa Amini"@en .
 
-<concept:women-life-freedom> a skos:Concept ;
+concept:women-life-freedom a skos:Concept ;
     skos:prefLabel "Woman, Life, Freedom"@en , "Zan, Zendegi, Azadi"@en , "زن، زندگی، آزادی"@fa ;
-    skos:definition "Slogan of the 2022 Iranian protests, originating from Kurdish women's movement"@en ;
-    skos:broader <concept:protest-slogans> ;
-    skos:related <concept:mahsa-amini-protests> , <concept:kurdish-movement> .
+    skos:definition "Slogan of the 2022 Iranian protests, originating from Kurdish women'\''s movement"@en ;
+    skos:broader concept:protest-slogans ;
+    skos:related concept:mahsa-amini-protests , concept:kurdish-movement .
 
-<concept:morality-police> a skos:Concept , schema:Organization ;
+concept:morality-police a skos:Concept , schema:Organization ;
     skos:prefLabel "Guidance Patrol"@en , "Gasht-e Ershad"@en , "گشت ارشاد"@fa ;
     skos:altLabel "Morality Police"@en ;
     skos:definition "Iranian religious police enforcing Islamic dress code and public morality"@en ;
-    skos:related <concept:mahsa-amini-protests> , <concept:hijab-enforcement> .
+    skos:related concept:mahsa-amini-protests , concept:hijab-enforcement .
+}'
 ```
 
-### Example: Marking Inactive Nodes
+### Example: Marking Inactive Nodes with PROV-O
 
 If you need to refine a concept (e.g., user corrects information):
 
-```turtle
-<interaction:2026-01-10T15:00:00Z> a schema:InteractionAction ;
-    schema:agent <session:2026-01-10T14:23:45Z> ;
+```bash
+curl -X POST http://localhost:7878/sparql \
+  -H 'Content-Type: application/sparql-update' \
+  -d 'INSERT DATA {
+@prefix interaction: <http://aleph-wiki.local/interaction/> .
+@prefix concept: <http://aleph-wiki.local/concept/> .
+@prefix session: <http://aleph-wiki.local/session/> .
+@prefix schema: <http://schema.org/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix : <http://aleph-wiki.local/> .
+
+interaction:2026-01-10T15:00:00Z a schema:InteractionAction ;
+    schema:agent session:2026-01-10T14:23:45Z ;
     schema:participant :user ;
     schema:startTime "2026-01-10T15:00:00Z"^^xsd:dateTime ;
-    schema:object <concept:old-concept-123> ;
-    schema:result <concept:refined-concept-456> ;
+    schema:object concept:old-concept-123 ;
+    schema:result concept:refined-concept-456 ;
     rdfs:comment "Refined understanding based on user correction"@en .
 
-<concept:old-concept-123>
-    schema:actionStatus schema:FailedActionStatus ;
-    schema:replacedBy <concept:refined-concept-456> ;
-    dct:modified "2026-01-10T15:00:00Z"^^xsd:dateTime .
+concept:old-concept-123
+    prov:invalidatedAtTime "2026-01-10T15:00:00Z"^^xsd:dateTime ;
+    prov:wasInvalidatedBy interaction:2026-01-10T15:00:00Z ;
+    prov:wasRevisedBy concept:refined-concept-456 .
 
-<concept:refined-concept-456> a skos:Concept ;
+concept:refined-concept-456 a skos:Concept ;
     skos:prefLabel "Corrected Label"@en ;
-    schema:replaces <concept:old-concept-123> .
+    prov:wasRevisionOf concept:old-concept-123 ;
+    prov:generatedAtTime "2026-01-10T15:00:00Z"^^xsd:dateTime .
+}'
+```
+
+To filter out invalidated concepts in queries:
+
+```sparql
+SELECT ?concept ?label WHERE {
+    ?concept a skos:Concept ;
+             skos:prefLabel ?label .
+    FILTER NOT EXISTS { ?concept prov:invalidatedAtTime ?time }
+}
 ```
 
 ## Clarification Questions
@@ -169,11 +208,20 @@ to certain data, you can ask the user for clarification questions. That conversa
 might be added as notes to the `InteractionAction`.
 
 Example:
-```turtle
-<interaction:2026-01-10T14:35:00Z> a schema:InteractionAction ;
-    schema:agent <session:2026-01-10T14:23:45Z> ;
+```bash
+curl -X POST http://localhost:7878/sparql \
+  -H 'Content-Type: application/sparql-update' \
+  -d 'INSERT DATA {
+@prefix interaction: <http://aleph-wiki.local/interaction/> .
+@prefix session: <http://aleph-wiki.local/session/> .
+@prefix schema: <http://schema.org/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+interaction:2026-01-10T14:35:00Z a schema:InteractionAction ;
+    schema:agent session:2026-01-10T14:23:45Z ;
     schema:actionStatus schema:PotentialActionStatus ;
     rdfs:comment "Clarification needed: Should this event be modeled using schema:Event or as a SKOS concept hierarchy? The protests have both temporal (event) and conceptual (movement) characteristics."@en .
+}'
 ```
 
 ## Output Format
@@ -186,11 +234,12 @@ recall.
 
 ### Response Structure
 
-When responding to the user after updating `index.ttl`:
+When responding to the user after executing SPARQL UPDATE:
 
-1. Brief confirmation (1-2 sentences) of what was added
-2. Key concepts created/linked
-3. Any questions or notes about ontological choices
+1. Execute the SPARQL UPDATE via curl (silently, in background)
+2. Brief confirmation (1-2 sentences) of what was added to the graph
+3. Key concepts created/linked
+4. Any questions or notes about ontological choices
 
 Example:
 ```
@@ -315,12 +364,13 @@ Link concepts across time:
 
 ## Implementation Notes
 
-### File Operations
+### SPARQL Operations
 
-- **Always append** to `index.ttl`, never overwrite
-- **Read first** to check for existing concepts
+- **Always use INSERT DATA** to add new triples (never DELETE unless explicitly correcting)
+- **Query first** (optional) to check for existing concepts and reuse them
 - **Use consistent URIs** - timestamp-based for interactions, semantic for concepts
-- **Group related triples** with blank lines for readability
+- **Group related triples** logically in your INSERT DATA statements
+- **Escape quotes** properly in curl commands (use `'\''` for single quotes in data)
 
 ### URI Patterns
 
@@ -333,13 +383,14 @@ Link concepts across time:
 
 ### Best Practices
 
-1. **Read existing graph** before adding to avoid duplicates
-2. **Reuse concepts** across interactions when possible
+1. **Query existing graph** (optional) before adding to check for and reuse existing concepts
+2. **Reuse concepts** across interactions when possible via consistent URIs
 3. **Add bidirectional links** (if A relates to B, add B relates to A)
 4. **Include dates** on all interactions and time-bound concepts
-5. **Use schema:actionStatus** to track concept lifecycle
+5. **Use PROV-O invalidation** (`prov:invalidatedAtTime`) to mark outdated concepts
 6. **Keep comments concise** but informative
 7. **Verify ontology usage** by loading ontology files when uncertain
+8. **Filter invalidated concepts** in queries using `FILTER NOT EXISTS { ?s prov:invalidatedAtTime ?t }`
 
 ---
 
@@ -349,15 +400,15 @@ User: "Tell me about the French Revolution"
 
 You should:
 
-1. Read `~/aleph-wiki/index.ttl` to check for existing concepts
-2. Create interaction node
+1. (Optional) Query SPARQL endpoint to check for existing related concepts
+2. Create interaction node with timestamp
 3. Create/link concepts: french-revolution, monarchy, republic, revolution concepts
 4. Use schema:Event for the historical event
 5. Use SKOS for conceptual relationships
 6. Add dates, locations, related concepts
 7. Include French language labels
 8. Link to broader concepts like "revolutions" or "european-history"
-9. Append all triples to the file
+9. Execute SPARQL INSERT DATA via curl to `http://localhost:7878/sparql`
 10. Respond with brief confirmation
 
 Response format:
