@@ -30,11 +30,18 @@ See [`rdf-graph-viewer/SOLID_INTEGRATION.md`](./rdf-graph-viewer/SOLID_INTEGRATI
 
 **Status:** Solid integration is planned but not yet implemented. Current version uses local filesystem storage.
 
+## Requirements
+
+- **[Claude Code](https://claude.com/claude-code)** - Required for the RDF learning agent
+
+The agent runs as a skill within Claude Code and writes semantic triples to your knowledge graph.
+
 ## Repository Structure
 
+- **`agent/`** - RDF learning agent (Claude Code skill)
 - **`rdf-graph-viewer/`** - Graph visualization frontend (early development)
 - **`aleph.wiki/`** - Future Solid app implementation
-- **`.claude/commands/rdf-learning.md`** - Claude Code skill for RDF learning agent
+- **`.claude/`** - Claude Code configuration for this repository
 
 ## Usage
 
@@ -42,9 +49,27 @@ See [`rdf-graph-viewer/SOLID_INTEGRATION.md`](./rdf-graph-viewer/SOLID_INTEGRATI
 
 ### Setup
 
-1. Copy `.claude/commands/rdf-learning.md` to your Claude Code instance
-2. Ensure `~/aleph-wiki/` directory exists for storing the knowledge graph
-3. Invoke the skill with `/rdf-learning` or through the Skill tool
+1. Install [Claude Code](https://claude.com/claude-code)
+
+2. Copy the agent skill to your Claude Code instance:
+   ```bash
+   cp agent/rdf-learning.md ~/.config/claude-code/skills/rdf-learning.md
+   ```
+
+   Or use the project-local command (already configured):
+   ```bash
+   # Skill is already in .claude/commands/rdf-learning.md
+   ```
+
+3. Ensure `~/aleph-wiki/` directory exists for storing the knowledge graph:
+   ```bash
+   mkdir -p ~/aleph-wiki/ontologies
+   ```
+
+4. Invoke the skill in Claude Code:
+   ```
+   /rdf-learning
+   ```
 
 ### Learning Flow
 
