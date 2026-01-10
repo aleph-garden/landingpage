@@ -1,5 +1,5 @@
 {
-  description = "Aleph TUI - Terminal interface for Aleph Wiki utilities";
+  description = "Aleph CLI - Command-line interface for Aleph Wiki utilities";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -30,7 +30,7 @@
         };
 
         packages.default = pkgs.rustPlatform.buildRustPackage {
-          pname = "aleph-tui";
+          pname = "aleph-cli";
           version = "0.1.0";
           src = ./.;
 
@@ -43,7 +43,7 @@
           ];
 
           postInstall = ''
-            wrapProgram $out/bin/aleph-tui \
+            wrapProgram $out/bin/aleph \
               --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.oxigraph ]}
           '';
         };

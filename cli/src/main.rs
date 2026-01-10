@@ -2,8 +2,8 @@ use clap::{Parser, Subcommand};
 use std::process::Command;
 
 #[derive(Parser)]
-#[command(name = "aleph-tui")]
-#[command(about = "Aleph Wiki TUI utilities", long_about = None)]
+#[command(name = "aleph")]
+#[command(about = "Aleph Wiki CLI utilities", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
