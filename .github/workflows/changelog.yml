@@ -41,17 +41,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Check if a draft release already exists
-          DRAFT_ID=$(gh release list --exclude-pre-releases --limit 100 --json isDraft,id,tagName | \
-            jq -r '.[] | select(.isDraft == true) | .id' | head -n 1)
+          # Find existing draft release with tag "unreleased"
+          DRAFT_EXISTS=$(gh api repos/:owner/:repo/releases --jq '.[] | select(.draft == true and .tag_name == "unreleased") | .id')
 
-          if [ -n "$DRAFT_ID" ]; then
+          if [ -n "$DRAFT_EXISTS" ]; then
             # Update existing draft
-            echo "Updating existing draft release..."
-            gh release edit $(gh release list --exclude-pre-releases --limit 100 --json isDraft,tagName | \
-              jq -r '.[] | select(.isDraft == true) | .tagName' | head -n 1) \
-              --draft \
-              --notes-file RELEASE_NOTES.md
+            echo "Updating existing draft release (ID: $DRAFT_EXISTS)..."
+            gh api -X PATCH repos/:owner/:repo/releases/$DRAFT_EXISTS \
+              -f body="@RELEASE_NOTES.md" \
+              -f tag_name="unreleased" \
+              -f name="Unreleased" \
+              -F draft=true
           else
             # Create new draft release
             echo "Creating new draft release..."
