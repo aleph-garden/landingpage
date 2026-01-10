@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { Server } from "@modelcontextprotocol/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/server/stdio.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { Session } from "@inrupt/solid-client-authn-node";
 import {
