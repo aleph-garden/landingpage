@@ -1,0 +1,10 @@
+@prefix : <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+:Alice rdf:type :Person .
+:Alice :knows :Bob .
+:Bob rdf:type :Person .
+:Bob :knows :Charlie .
+:Charlie rdf:type :Person .
+:Charlie :likes :RDF .
