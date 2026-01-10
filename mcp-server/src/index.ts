@@ -3,10 +3,17 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-import { Session } from "@inrupt/solid-client-authn-node";
 import { Parser, Store } from "n3";
 import { QueryEngine } from "@comunica/query-sparql";
+import { Config } from "./lib/config.js";
+import {
+  setSolidSession,
+  getSolidSession,
+  initializeSolidSession,
+  readRdfResource,
+  appendTriples,
+  listContainer,
+} from "./lib/solid-client.js";
 
 /**
  * MCP Server for Solid Pod RDF Operations
@@ -18,90 +25,39 @@ import { QueryEngine } from "@comunica/query-sparql";
  * - Managing ontologies
  */
 
-// Configuration schema
-const ConfigSchema = z.object({
-  podUrl: z.string().url(),
-  webId: z.string().url(),
-  clientId: z.string().optional(),
-  clientSecret: z.string().optional(),
-  oidcIssuer: z.string().url().default("https://solidcommunity.net"),
-});
-
-export type Config = z.infer<typeof ConfigSchema>;
-
-// Global session for Solid authentication
-let solidSession: Session | null = null;
-let config: Config | null = null;
-
-/**
- * Set the global Solid session (mainly for testing)
- */
-export function setSolidSession(session: Session | null) {
-  solidSession = session;
-}
-
-/**
- * Initialize Solid session with authentication
- */
-export async function initializeSolidSession(cfg: Config): Promise<Session> {
-  const session = new Session();
-
-  if (cfg.clientId && cfg.clientSecret) {
-    await session.login({
-      clientId: cfg.clientId,
-      clientSecret: cfg.clientSecret,
-      oidcIssuer: cfg.oidcIssuer,
-    });
-  }
-
-  solidSession = session;
-  config = cfg;
-
-  return session;
-}
-
-/**
- * Read RDF resource from a URL using Solid session
- */
-export async function readRdfResource(url: string): Promise<string> {
-  if (!solidSession) {
-    throw new Error("Solid session not initialized");
-  }
-
-  const response = await solidSession.fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch RDF resource: ${response.statusText}`);
-  }
-
-  return await response.text();
-}
-
-/**
- * Append RDF triples to a resource using SPARQL UPDATE PATCH
- */
-export async function appendTriples(url: string, triples: string): Promise<void> {
-  if (!solidSession) {
-    throw new Error("Solid session not initialized");
-  }
-
-  const sparqlUpdate = `INSERT DATA {\n${triples}\n}`;
-
-  const response = await solidSession.fetch(url, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/sparql-update",
-    },
-    body: sparqlUpdate,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to append triples: ${response.statusText}`);
-  }
-}
+// Re-export for backward compatibility
+export type { Config };
+export {
+  setSolidSession,
+  initializeSolidSession,
+  readRdfResource,
+  appendTriples,
+  listContainer,
+};
 
 /**
  * Match RDF triples using pattern matching
+ *
+ * Performs simple triple pattern matching on an RDF resource using N3.js Store.
+ * Null or undefined parameters act as wildcards matching any value.
+ *
+ * @param url - The URL of the RDF resource to query
+ * @param subject - Subject URI to match, or null/undefined for wildcard
+ * @param predicate - Predicate URI to match, or null/undefined for wildcard
+ * @param object - Object URI/literal to match, or null/undefined for wildcard
+ * @returns Promise resolving to array of matched triples
+ * @throws {Error} If session is not initialized or resource fetch fails
+ *
+ * @example
+ * ```ts
+ * // Find all SKOS Concepts
+ * const concepts = await sparqlMatch(
+ *   'https://example.com/data.ttl',
+ *   null,
+ *   'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+ *   'http://www.w3.org/2004/02/skos/core#Concept'
+ * );
+ * ```
  */
 export async function sparqlMatch(
   url: string,
@@ -137,6 +93,11 @@ export async function sparqlMatch(
 // Create a singleton QueryEngine instance
 let queryEngine: QueryEngine | null = null;
 
+/**
+ * Get or create the singleton Comunica QueryEngine instance
+ *
+ * @returns The QueryEngine instance for executing SPARQL queries
+ */
 function getQueryEngine(): QueryEngine {
   if (!queryEngine) {
     queryEngine = new QueryEngine();
@@ -145,38 +106,37 @@ function getQueryEngine(): QueryEngine {
 }
 
 /**
- * List resources in a Solid container
- */
-export async function listContainer(containerUrl: string): Promise<string[]> {
-  if (!containerUrl.endsWith('/')) {
-    throw new Error('Container URL must end with /');
-  }
-
-  const rdfContent = await readRdfResource(containerUrl);
-
-  // Parse Turtle with N3.js
-  const parser = new Parser();
-  const store = new Store();
-  const quads = parser.parse(rdfContent);
-  store.addQuads(quads);
-
-  // Find all ldp:contains predicates
-  const containsQuads = store.getQuads(
-    null,
-    'http://www.w3.org/ns/ldp#contains',
-    null,
-    null
-  );
-
-  // Extract object URIs
-  return containsQuads.map((quad) => quad.object.value);
-}
-
-/**
- * Execute SPARQL query using Comunica QueryEngine
+ * Execute a full SPARQL query using Comunica QueryEngine
+ *
+ * Supports SELECT, CONSTRUCT, and ASK query types with automatic result formatting:
+ * - SELECT: Returns SPARQL JSON results format
+ * - CONSTRUCT: Returns Turtle format with common prefixes
+ * - ASK: Returns JSON with boolean result
+ *
+ * @param url - The URL of the RDF resource to query
+ * @param query - The SPARQL query string
+ * @returns Promise resolving to formatted query results
+ * @throws {Error} If session is not initialized
+ * @throws {Error} If query execution fails
+ *
+ * @example
+ * ```ts
+ * // SELECT query
+ * const results = await executeSparqlQuery(
+ *   'https://example.com/data.ttl',
+ *   'SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10'
+ * );
+ *
+ * // ASK query
+ * const exists = await executeSparqlQuery(
+ *   'https://example.com/data.ttl',
+ *   'ASK { ?s a <http://example.org/Type> }'
+ * );
+ * ```
  */
 export async function executeSparqlQuery(url: string, query: string): Promise<string> {
-  if (!solidSession) {
+  const session = getSolidSession();
+  if (!session) {
     throw new Error("Solid session not initialized");
   }
 
@@ -185,7 +145,7 @@ export async function executeSparqlQuery(url: string, query: string): Promise<st
   // Execute query with authenticated fetch
   const result = await engine.query(query, {
     sources: [url],
-    fetch: solidSession.fetch,
+    fetch: session.fetch,
     httpCacheDisabled: true,
   });
 
@@ -248,7 +208,17 @@ export async function executeSparqlQuery(url: string, query: string): Promise<st
 }
 
 /**
- * Register MCP tools on the server
+ * Register all MCP tools on the server
+ *
+ * Registers the following tools for Solid Pod operations:
+ * - solid_init: Initialize Solid session with authentication
+ * - rdf_read: Read RDF resources from Solid Pods
+ * - rdf_append: Append RDF triples to resources
+ * - sparql_match: Pattern matching for RDF triples
+ * - sparql_query: Execute full SPARQL queries
+ * - solid_list: List resources in Solid containers
+ *
+ * @param server - The MCP Server instance to register tools on
  */
 export function registerTools(server: Server) {
   const tools = [
