@@ -145,6 +145,34 @@ function getQueryEngine(): QueryEngine {
 }
 
 /**
+ * List resources in a Solid container
+ */
+export async function listContainer(containerUrl: string): Promise<string[]> {
+  if (!containerUrl.endsWith('/')) {
+    throw new Error('Container URL must end with /');
+  }
+
+  const rdfContent = await readRdfResource(containerUrl);
+
+  // Parse Turtle with N3.js
+  const parser = new Parser();
+  const store = new Store();
+  const quads = parser.parse(rdfContent);
+  store.addQuads(quads);
+
+  // Find all ldp:contains predicates
+  const containsQuads = store.getQuads(
+    null,
+    'http://www.w3.org/ns/ldp#contains',
+    null,
+    null
+  );
+
+  // Extract object URIs
+  return containsQuads.map((quad) => quad.object.value);
+}
+
+/**
  * Execute SPARQL query using Comunica QueryEngine
  */
 export async function executeSparqlQuery(url: string, query: string): Promise<string> {
@@ -318,6 +346,20 @@ export function registerTools(server: Server) {
         required: ["url", "query"],
       },
     },
+    {
+      name: "solid_list",
+      description: "List resources in a Solid container",
+      inputSchema: {
+        type: "object",
+        properties: {
+          containerUrl: {
+            type: "string",
+            description: "URL of the container to list (must end with /)",
+          },
+        },
+        required: ["containerUrl"],
+      },
+    },
   ];
 
   server.setRequestHandler(
@@ -400,6 +442,19 @@ export function registerTools(server: Server) {
             {
               type: "text",
               text: result,
+            },
+          ],
+        };
+      }
+
+      if (request.params.name === "solid_list") {
+        const { containerUrl } = request.params.arguments as any;
+        const resources = await listContainer(containerUrl);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(resources),
             },
           ],
         };
