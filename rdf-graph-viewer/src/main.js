@@ -11,6 +11,7 @@ class RDFGraphViewer {
     this.isLive = true;
     this.isPaused = false;
     this.lastRdfContent = null;
+    this.nodeToSession = new Map(); // Track which session each node belongs to
 
     // Settings
     this.settings = {
@@ -107,6 +108,11 @@ class RDFGraphViewer {
     // Load sample data button
     document.getElementById('load-sample-btn').addEventListener('click', () => {
       this.loadSampleData();
+    });
+
+    // Reset button
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      this.resetAllData();
     });
 
     // Node size
@@ -251,7 +257,7 @@ INSERT DATA {
     schema:agent session:demo-session-2 ;
     schema:startTime "2026-01-10T13:05:00Z"^^xsd:dateTime .
 
-  # Content
+  # Content for Session 1 - Database concepts
   concept:GraphDB a concept:Technology ;
     rdfs:label "Graph Database" ;
     rdfs:comment "A database that uses graph structures for queries" .
@@ -266,10 +272,19 @@ INSERT DATA {
     rdfs:comment "Resource Description Framework" ;
     schema:relatedTo concept:SPARQL .
 
-  concept:Ontology a concept:Concept ;
-    rdfs:label "Ontology" ;
-    rdfs:comment "Formal representation of knowledge" ;
-    schema:relatedTo concept:RDF .
+  # Content for Session 2 - Programming concepts
+  concept:Python a concept:Language ;
+    rdfs:label "Python" ;
+    rdfs:comment "High-level programming language" .
+
+  concept:JavaScript a concept:Language ;
+    rdfs:label "JavaScript" ;
+    rdfs:comment "Scripting language for web development" .
+
+  concept:React a concept:Framework ;
+    rdfs:label "React" ;
+    rdfs:comment "JavaScript library for building user interfaces" ;
+    schema:relatedTo concept:JavaScript .
 }
 `;
 
@@ -306,6 +321,60 @@ INSERT DATA {
     } catch (error) {
       console.error('Error loading sample data:', error);
       alert('Failed to load sample data. Make sure your SPARQL endpoint supports UPDATE queries at /update');
+    }
+  }
+
+  async resetAllData() {
+    const confirmed = confirm('Are you sure you want to delete ALL data from the SPARQL endpoint? This cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      console.log('Resetting all data in SPARQL endpoint...');
+
+      // Delete all triples
+      const deleteQuery = `DELETE WHERE { ?s ?p ?o }`;
+
+      const updateEndpoint = this.settings.sparqlEndpoint.replace('/query', '/update');
+
+      const response = await fetch(updateEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/sparql-update'
+        },
+        body: deleteQuery
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (this.settings.debugMode) {
+          console.error('SPARQL Delete Error:', errorText);
+        }
+        throw new Error(`Failed to reset data: ${response.statusText}`);
+      }
+
+      console.log('All data deleted successfully');
+
+      // Clear local state
+      this.states = [];
+      this.sessions = [];
+      this.nodeToSession.clear();
+      this.currentStateIndex = 0;
+      this.lastRenderedIndex = -1;
+
+      // Clear the graph
+      this.nodeGroup.selectAll('.node').remove();
+      this.linkGroup.selectAll('.link').remove();
+      this.linkLabelGroup.selectAll('.link-label').remove();
+
+      // Update UI
+      this.updateSessionTimeline();
+      this.updateTimelineInfo();
+
+      alert('All data has been deleted.');
+
+    } catch (error) {
+      console.error('Error resetting data:', error);
+      alert('Failed to reset data. Make sure your SPARQL endpoint supports UPDATE queries at /update');
     }
   }
 
@@ -437,6 +506,7 @@ INSERT DATA {
 
   generateStatesFromTriples(sparqlTriples) {
     const newStates = [];
+    this.nodeToSession.clear(); // Reset node-to-session mapping
 
     // Convert SPARQL results to internal triple format
     const allContentTriples = sparqlTriples.map(row => ({
@@ -454,19 +524,40 @@ INSERT DATA {
       return;
     }
 
+    // Divide content equally among sessions
+    const triplesPerSession = Math.floor(allContentTriples.length / this.sessions.length);
+
     this.sessions.forEach((session, sessionIndex) => {
+      // Calculate which triples belong to this session
+      const sessionStartTriple = sessionIndex * triplesPerSession;
+      const sessionEndTriple = sessionIndex === this.sessions.length - 1
+        ? allContentTriples.length
+        : (sessionIndex + 1) * triplesPerSession;
+      const sessionTriples = allContentTriples.slice(sessionStartTriple, sessionEndTriple);
+
       session.interactions.forEach((interaction, interactionIndex) => {
-        const portionSize = Math.floor(allContentTriples.length / totalInteractions);
-        const startIndex = (sessionIndex * session.interactions.length + interactionIndex) * portionSize;
-        const endIndex = Math.min(startIndex + portionSize, allContentTriples.length);
+        // Progressively show more triples within this session
+        const triplesPerInteraction = Math.ceil(sessionTriples.length / session.interactions.length);
+        const interactionEndIndex = Math.min(
+          (interactionIndex + 1) * triplesPerInteraction,
+          sessionTriples.length
+        );
 
-        const isLastInteraction = sessionIndex === this.sessions.length - 1 &&
-                                  interactionIndex === session.interactions.length - 1;
+        // Accumulate all previous sessions' content plus current session's progress
+        const allPreviousContent = allContentTriples.slice(0, sessionStartTriple);
+        const currentSessionContent = sessionTriples.slice(0, interactionEndIndex);
+        const triplesToShow = [...allPreviousContent, ...currentSessionContent];
 
-        const triplesToShow = isLastInteraction ? allContentTriples : allContentTriples.slice(0, endIndex);
         const graphData = this.triplesToGraphFromSparql(triplesToShow);
 
-        console.log(`State ${newStates.length}: ${triplesToShow.length} triples, ${graphData.nodes.length} nodes, ${graphData.links.length} links`);
+        // Track which nodes belong to which session (first appearance wins)
+        graphData.nodes.forEach(node => {
+          if (!this.nodeToSession.has(node.id)) {
+            this.nodeToSession.set(node.id, sessionIndex);
+          }
+        });
+
+        console.log(`State ${newStates.length}: Session ${sessionIndex}, Interaction ${interactionIndex}: ${triplesToShow.length} triples, ${graphData.nodes.length} nodes, ${graphData.links.length} links`);
 
         newStates.push({
           ...graphData,
@@ -758,6 +849,22 @@ INSERT DATA {
     return match ? match[1] : uri;
   }
 
+  createSessionClusteringForce(sessionCenters) {
+    const strength = 0.1; // Strength of attraction to session center
+
+    return (alpha) => {
+      this.simulation.nodes().forEach(node => {
+        const sessionIndex = this.nodeToSession.get(node.id);
+        if (sessionIndex !== undefined && sessionCenters[sessionIndex]) {
+          const center = sessionCenters[sessionIndex];
+          // Pull nodes toward their session center
+          node.vx += (center.x - node.x) * strength * alpha;
+          node.vy += (center.y - node.y) * strength * alpha;
+        }
+      });
+    };
+  }
+
   renderState(index, animate = false) {
     if (index < 0 || index >= this.states.length) return;
 
@@ -795,6 +902,18 @@ INSERT DATA {
       });
     }
 
+    // Calculate session cluster positions
+    const sessionCount = this.sessions.length;
+    const sessionCenters = [];
+    for (let i = 0; i < sessionCount; i++) {
+      // Distribute sessions horizontally across the screen
+      const spacing = this.width / (sessionCount + 1);
+      sessionCenters.push({
+        x: spacing * (i + 1),
+        y: this.height / 2
+      });
+    }
+
     // Update or create force simulation
     if (!this.simulation) {
       this.simulation = d3.forceSimulation()
@@ -802,7 +921,11 @@ INSERT DATA {
         .force('charge', d3.forceManyBody().strength(this.settings.chargeStrength))
         .force('center', d3.forceCenter(this.width / 2, this.height / 2))
         .force('collision', d3.forceCollide().radius(50))
+        .force('session', this.createSessionClusteringForce(sessionCenters))
         .alphaDecay(0.05); // Faster settling
+    } else {
+      // Update session clustering force with new centers
+      this.simulation.force('session', this.createSessionClusteringForce(sessionCenters));
     }
 
     // Identify new and removed links

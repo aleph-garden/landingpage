@@ -468,6 +468,18 @@ body {
   background: #4248d9;
 }
 
+.danger-btn {
+  background: #dc3545;
+}
+
+.danger-btn:hover {
+  background: #c82333;
+}
+
+.danger-btn:active {
+  background: #bd2130;
+}
+
 .radio-group {
   display: flex;
   gap: 8px;
