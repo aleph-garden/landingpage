@@ -31,7 +31,9 @@ it deleted (which it never does, it only marks them as inactive somehow).
 
 1. **Initialize connection** using `mcp__aleph-wiki-solid__solid_init` with Pod URL
 2. **Read existing graph** using `mcp__aleph-wiki-solid__rdf_read`
-3. **Query concepts** using `mcp__aleph-wiki-solid__sparql_match`
+3. **Query concepts** using one of:
+   - `mcp__aleph-wiki-solid__sparql_query` - Full SPARQL query support (SELECT, ASK, CONSTRUCT, DESCRIBE)
+   - `mcp__aleph-wiki-solid__sparql_match` - Simple triple pattern matching
 4. **Append triples** using `mcp__aleph-wiki-solid__rdf_append`
 
 **When MCP server is NOT available** (fallback to local filesystem):
@@ -263,6 +265,80 @@ When user requests German tags:
 - Add `@de` variants to all labels and comments
 - Translate technical terms appropriately
 - Keep original language + English + German
+
+## SPARQL Query Usage
+
+When querying your knowledge graph using the MCP server's `sparql_query` tool, you can use full SPARQL syntax:
+
+### Example SPARQL Queries
+
+**Find all concepts related to a topic:**
+```sparql
+PREFIX concept: <http://aleph-wiki.local/concept/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+SELECT ?concept ?label ?related
+WHERE {
+  ?concept skos:related concept:mahsa-amini-protests ;
+           skos:prefLabel ?label .
+  OPTIONAL { ?concept skos:related ?related }
+}
+```
+
+**Get all interactions from a specific session:**
+```sparql
+PREFIX interaction: <http://aleph-wiki.local/interaction/>
+PREFIX session: <http://aleph-wiki.local/session/>
+PREFIX schema: <http://schema.org/>
+
+SELECT ?interaction ?time ?object ?comment
+WHERE {
+  ?interaction a schema:InteractionAction ;
+               schema:agent session:2026-01-10T14:23:45Z ;
+               schema:startTime ?time ;
+               schema:object ?object .
+  OPTIONAL { ?interaction rdfs:comment ?comment }
+}
+ORDER BY ?time
+```
+
+**Find concepts in a hierarchy:**
+```sparql
+PREFIX concept: <http://aleph-wiki.local/concept/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+SELECT ?narrower ?label
+WHERE {
+  concept:human-rights-movements skos:narrower+ ?narrower .
+  ?narrower skos:prefLabel ?label .
+  FILTER(lang(?label) = "en")
+}
+```
+
+**Search for concepts by text:**
+```sparql
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+SELECT ?concept ?label
+WHERE {
+  ?concept skos:prefLabel ?label .
+  FILTER(regex(?label, "protest", "i"))
+}
+```
+
+### When to Use SPARQL vs Triple Pattern Matching
+
+- Use `sparql_query` for:
+  - Complex queries with multiple patterns
+  - Aggregations (COUNT, SUM, etc.)
+  - Filtering and sorting
+  - Graph traversal (property paths like `skos:broader+`)
+  - OPTIONAL patterns
+
+- Use `sparql_match` for:
+  - Simple triple lookups
+  - Quick checks for existence
+  - When endpoint URL is not available
 
 ## Cross-Linking Strategy
 

@@ -1,6 +1,5 @@
 import './style.css';
 import * as d3 from 'd3';
-import { Parser } from 'n3';
 
 class RDFGraphViewer {
   constructor() {
@@ -15,7 +14,7 @@ class RDFGraphViewer {
 
     // Settings
     this.settings = {
-      rdfFilePath: '/aleph-wiki.ttl',
+      sparqlEndpoint: 'http://localhost:3030/aleph-wiki/sparql',
       nodeSize: 20,
       linkDistance: 150,
       chargeStrength: -400,
@@ -39,8 +38,8 @@ class RDFGraphViewer {
     // Setup settings panel
     this.setupSettings();
 
-    // Watch for file changes
-    this.watchRDFFile();
+    // Load data from SPARQL endpoint
+    this.loadFromSparql();
 
     // Handle window resize
     window.addEventListener('resize', () => this.handleResize());
@@ -76,7 +75,7 @@ class RDFGraphViewer {
     this.closeSettingsBtn = document.getElementById('close-settings-btn');
 
     // Settings controls
-    this.rdfFilePathInput = document.getElementById('rdf-file-path');
+    this.sparqlEndpointInput = document.getElementById('sparql-endpoint');
     this.nodeSizeInput = document.getElementById('node-size');
     this.nodeSizeValue = document.getElementById('node-size-value');
     this.linkDistanceInput = document.getElementById('link-distance');
@@ -95,12 +94,13 @@ class RDFGraphViewer {
       this.settingsOverlay.classList.remove('open');
     });
 
-    // RDF file path
-    this.rdfFilePathInput.addEventListener('change', (e) => {
-      this.settings.rdfFilePath = e.target.value;
+    // SPARQL endpoint
+    this.sparqlEndpointInput.addEventListener('change', (e) => {
+      this.settings.sparqlEndpoint = e.target.value;
       this.states = [];
-      this.lastRdfContent = null;
-      console.log('Changed RDF file path to:', this.settings.rdfFilePath);
+      this.sessions = [];
+      console.log('Changed SPARQL endpoint to:', this.settings.sparqlEndpoint);
+      this.loadFromSparql();
     });
 
     // Node size
@@ -206,171 +206,145 @@ class RDFGraphViewer {
     }
   }
 
-  async watchRDFFile() {
-    // In development, Vite's HMR will handle file watching
-    // We'll set up a custom endpoint for this
-    const checkInterval = 1000; // Check every second
+  async loadFromSparql() {
+    try {
+      console.log('Loading from SPARQL endpoint:', this.settings.sparqlEndpoint);
 
-    setInterval(async () => {
-      try {
-        let url;
-        // If path starts with ~ or /, use the API endpoint
-        if (this.settings.rdfFilePath.startsWith('~') || this.settings.rdfFilePath.startsWith('/') && this.settings.rdfFilePath.includes('/')) {
-          url = `/api/file?path=${encodeURIComponent(this.settings.rdfFilePath)}&t=${Date.now()}`;
-        } else {
-          // Otherwise treat as relative path
-          url = this.settings.rdfFilePath + '?t=' + Date.now();
-        }
+      // Query for sessions and interactions
+      const sessionsQuery = `
+        PREFIX schema: <http://schema.org/>
+        PREFIX session: <http://aleph-wiki.local/session/>
+        PREFIX interaction: <http://aleph-wiki.local/interaction/>
 
-        const response = await fetch(url);
-        if (response.ok) {
-          const rdfContent = await response.text();
+        SELECT ?session ?sessionStart ?interaction ?interactionStart
+        WHERE {
+          ?session a ?sessionType ;
+                   schema:startTime ?sessionStart .
+          FILTER(CONTAINS(STR(?sessionType), "Session"))
 
-          // Only parse if content actually changed
-          if (rdfContent !== this.lastRdfContent) {
-            this.lastRdfContent = rdfContent;
-            this.parseAndUpdateGraph(rdfContent);
+          OPTIONAL {
+            ?interaction schema:agent ?session ;
+                        schema:startTime ?interactionStart .
+            FILTER(CONTAINS(STR(?interactionType), "Interaction"))
+            ?interaction a ?interactionType .
           }
         }
-      } catch (error) {
-        console.log('Waiting for', this.settings.rdfFilePath, '...');
-      }
-    }, checkInterval);
-  }
+        ORDER BY ?sessionStart ?interactionStart
+      `;
 
-  parseAndUpdateGraph(rdfContent) {
-    const parser = new Parser();
-    const triples = [];
+      const sessionsData = await this.executeSparqlQuery(sessionsQuery);
+      await this.extractSessionsAndInteractions(sessionsData);
 
-    try {
-      parser.parse(rdfContent, (error, triple) => {
-        if (error) {
-          console.error('Parse error:', error);
-          return;
+      // Query for all triples (content)
+      const triplesQuery = `
+        SELECT ?s ?p ?o
+        WHERE {
+          ?s ?p ?o .
+          FILTER(!CONTAINS(STR(?s), "session:") && !CONTAINS(STR(?s), "interaction:") && !CONTAINS(STR(?s), "agent:"))
         }
-        if (triple) {
-          triples.push(triple);
-        } else {
-          // Parsing complete
-          this.extractSessionsAndInteractions(triples);
-        }
-      });
+      `;
+
+      const triplesData = await this.executeSparqlQuery(triplesQuery);
+      this.generateStatesFromTriples(triplesData);
+
     } catch (error) {
-      console.error('RDF parsing failed:', error);
+      console.error('Error loading from SPARQL:', error);
     }
   }
 
-  extractSessionsAndInteractions(triples) {
-    // Build a map of sessions and interactions
-    const sessionMap = new Map();
-    const interactionMap = new Map();
-
-    // First pass: collect sessions and interactions
-    triples.forEach(triple => {
-      const subject = triple.subject.value;
-      const predicate = this.shortenURI(triple.predicate.value);
-      const object = triple.object.value;
-
-      // Find sessions
-      if (predicate === 'type' && (object.includes('Session') || subject.includes('session:'))) {
-        if (!sessionMap.has(subject)) {
-          sessionMap.set(subject, { uri: subject, startTime: null, interactions: [] });
-        }
-      }
-
-      // Find interactions
-      if (predicate === 'type' && object.includes('InteractionAction')) {
-        if (!interactionMap.has(subject)) {
-          interactionMap.set(subject, { uri: subject, startTime: null, session: null });
-        }
-      }
-
-      // Get session start times
-      if (predicate === 'startTime' && sessionMap.has(subject)) {
-        sessionMap.get(subject).startTime = object;
-      }
-
-      // Get interaction start times and link to sessions
-      if (predicate === 'startTime' && interactionMap.has(subject)) {
-        interactionMap.get(subject).startTime = object;
-      }
-
-      // Link interactions to sessions via agent property
-      if (predicate === 'agent' && interactionMap.has(subject)) {
-        interactionMap.get(subject).session = object;
-      }
+  async executeSparqlQuery(query) {
+    const response = await fetch(this.settings.sparqlEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/sparql-query',
+        'Accept': 'application/sparql-results+json'
+      },
+      body: query
     });
 
-    // Link interactions to their sessions
-    interactionMap.forEach((interaction, uri) => {
-      if (interaction.session && sessionMap.has(interaction.session)) {
-        sessionMap.get(interaction.session).interactions.push(interaction);
+    if (!response.ok) {
+      throw new Error(`SPARQL query failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.results.bindings;
+  }
+
+  async extractSessionsAndInteractions(results) {
+    const sessionMap = new Map();
+
+    // Process SPARQL results
+    results.forEach(row => {
+      const sessionUri = row.session.value;
+      const sessionStart = row.sessionStart.value;
+
+      if (!sessionMap.has(sessionUri)) {
+        sessionMap.set(sessionUri, {
+          uri: sessionUri,
+          startTime: sessionStart,
+          interactions: []
+        });
+      }
+
+      if (row.interaction) {
+        const interactionUri = row.interaction.value;
+        const interactionStart = row.interactionStart.value;
+
+        sessionMap.get(sessionUri).interactions.push({
+          uri: interactionUri,
+          startTime: interactionStart,
+          session: sessionUri
+        });
       }
     });
 
     // Sort sessions by start time
     this.sessions = Array.from(sessionMap.values())
-      .filter(s => s.startTime)
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-    // Sort interactions within each session
+    // Sort interactions within each session and remove duplicates
     this.sessions.forEach(session => {
-      session.interactions.sort((a, b) => a.startTime.localeCompare(b.startTime));
+      const uniqueInteractions = new Map();
+      session.interactions.forEach(int => {
+        uniqueInteractions.set(int.uri, int);
+      });
+      session.interactions = Array.from(uniqueInteractions.values())
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
     });
 
     console.log('Extracted sessions:', this.sessions);
-
-    // Generate states for each interaction
-    this.generateStatesFromSessions(triples);
   }
 
-  generateStatesFromSessions(triples) {
+  generateStatesFromTriples(sparqlTriples) {
     const newStates = [];
 
-    // Group triples by their subject (interaction URI)
-    const triplesByInteraction = new Map();
+    // Convert SPARQL results to internal triple format
+    const allContentTriples = sparqlTriples.map(row => ({
+      subject: row.s.value,
+      predicate: row.p.value,
+      object: row.o.value,
+      objectType: row.o.type
+    }));
 
-    // First, separate interaction metadata from content triples
-    triples.forEach(triple => {
-      const subject = triple.subject.value;
-      const predicate = this.shortenURI(triple.predicate.value);
+    console.log('Total content triples:', allContentTriples.length);
 
-      // Skip interaction metadata triples (these describe the interactions themselves)
-      if (subject.includes('interaction:') || subject.includes('session:') || subject.includes('agent:')) {
-        return;
-      }
-
-      // For now, we'll include all content triples in all states
-      // In a more sophisticated version, we'd track which interaction added each triple
-      if (!triplesByInteraction.has('all')) {
-        triplesByInteraction.set('all', []);
-      }
-      triplesByInteraction.get('all').push(triple);
-    });
-
-    const allContentTriples = triplesByInteraction.get('all') || [];
-
-    // For now, show cumulative graph at each interaction
-    // TODO: Track which triples were added by each interaction
-    let cumulativeTriples = [];
+    const totalInteractions = this.sessions.reduce((sum, s) => sum + s.interactions.length, 0);
+    if (totalInteractions === 0) {
+      console.warn('No interactions found');
+      return;
+    }
 
     this.sessions.forEach((session, sessionIndex) => {
       session.interactions.forEach((interaction, interactionIndex) => {
-        // For the first interaction, show some initial triples
-        // For subsequent ones, potentially add more
-        // For now, just show all content progressively
-
-        const portionSize = Math.floor(allContentTriples.length / this.sessions.reduce((sum, s) => sum + s.interactions.length, 0));
+        const portionSize = Math.floor(allContentTriples.length / totalInteractions);
         const startIndex = (sessionIndex * session.interactions.length + interactionIndex) * portionSize;
         const endIndex = Math.min(startIndex + portionSize, allContentTriples.length);
 
-        // If this is the last interaction, include all remaining triples
         const isLastInteraction = sessionIndex === this.sessions.length - 1 &&
                                   interactionIndex === session.interactions.length - 1;
 
         const triplesToShow = isLastInteraction ? allContentTriples : allContentTriples.slice(0, endIndex);
-
-        const graphData = this.triplesToGraph(triplesToShow);
+        const graphData = this.triplesToGraphFromSparql(triplesToShow);
 
         console.log(`State ${newStates.length}: ${triplesToShow.length} triples, ${graphData.nodes.length} nodes, ${graphData.links.length} links`);
 
@@ -386,19 +360,15 @@ class RDFGraphViewer {
       });
     });
 
-    // Check if states actually changed
-    if (JSON.stringify(this.states) !== JSON.stringify(newStates)) {
-      this.states = newStates;
-      console.log('Generated', this.states.length, 'states from sessions');
+    this.states = newStates;
+    console.log('Generated', this.states.length, 'states from sessions');
 
-      // Auto-advance to latest if in live mode
-      if (this.isLive && !this.isPaused) {
-        this.currentStateIndex = this.states.length - 1;
-        this.renderState(this.currentStateIndex, true);
-      }
-
-      this.updateSessionTimeline();
+    if (this.isLive && !this.isPaused) {
+      this.currentStateIndex = this.states.length - 1;
+      this.renderState(this.currentStateIndex, true);
     }
+
+    this.updateSessionTimeline();
   }
 
   updateSessionTimeline() {
@@ -473,6 +443,92 @@ class RDFGraphViewer {
     if (hours > 0) return `${hours}h ${minutes % 60}m`;
     if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
     return `${seconds}s`;
+  }
+
+  triplesToGraphFromSparql(triples) {
+    const nodes = new Map();
+    const links = [];
+    const nodeTypes = new Map();
+
+    console.log('Building graph from SPARQL triples:', triples.length);
+
+    // First pass: identify rdf:type relationships
+    triples.forEach(triple => {
+      const subject = this.shortenURI(triple.subject);
+      const predicate = this.shortenURI(triple.predicate);
+      const object = this.shortenURI(triple.object);
+
+      if (predicate === 'type') {
+        if (!nodeTypes.has(subject)) {
+          nodeTypes.set(subject, []);
+        }
+        nodeTypes.get(subject).push(object);
+      }
+    });
+
+    // Second pass: build graph
+    triples.forEach(triple => {
+      const subject = this.shortenURI(triple.subject);
+      const predicate = this.shortenURI(triple.predicate);
+      const object = this.shortenURI(triple.object);
+      const isObjectUri = triple.objectType === 'uri';
+
+      if (predicate === 'type') {
+        if (!nodes.has(subject)) {
+          nodes.set(subject, {
+            id: subject,
+            label: subject,
+            types: this.settings.typeDisplay === 'on' ? (nodeTypes.get(subject) || []) : []
+          });
+        }
+
+        if (this.settings.typeDisplay === 'nodes') {
+          if (!nodes.has(object)) {
+            nodes.set(object, {
+              id: object,
+              label: object,
+              types: [],
+              isType: true
+            });
+          }
+          links.push({
+            source: subject,
+            target: object,
+            predicate: predicate
+          });
+        }
+        return;
+      }
+
+      if (!nodes.has(subject)) {
+        nodes.set(subject, {
+          id: subject,
+          label: subject,
+          types: this.settings.typeDisplay === 'on' ? (nodeTypes.get(subject) || []) : []
+        });
+      }
+
+      if (isObjectUri) {
+        if (!nodes.has(object)) {
+          nodes.set(object, {
+            id: object,
+            label: object,
+            types: this.settings.typeDisplay === 'on' ? (nodeTypes.get(object) || []) : []
+          });
+        }
+
+        links.push({
+          source: subject,
+          target: object,
+          predicate: predicate
+        });
+      }
+    });
+
+    return {
+      nodes: Array.from(nodes.values()),
+      links: links
+    };
   }
 
   triplesToGraph(triples) {

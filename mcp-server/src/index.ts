@@ -61,37 +61,35 @@ async function initializeSolidSession(cfg: Config): Promise<Session> {
 }
 
 /**
- * Execute SPARQL query against RDF data in Solid Pod
+ * Execute SPARQL query over HTTP against a SPARQL endpoint
  */
 async function executeSparqlQuery(
-  resourceUrl: string,
+  endpointUrl: string,
   sparqlQuery: string,
   session: Session
 ): Promise<string> {
   try {
-    // Fetch the RDF resource
-    const dataset = await getSolidDataset(resourceUrl, {
-      fetch: session.fetch,
+    // Prepare the SPARQL query request
+    const params = new URLSearchParams();
+    params.append('query', sparqlQuery);
+
+    // Execute the query via HTTP POST
+    const response = await session.fetch(endpointUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/sparql-results+json',
+      },
+      body: params.toString(),
     });
 
-    // Convert Solid dataset to N3 Store for SPARQL
-    const store = new Store();
-    const parser = new Parser({ baseIRI: resourceUrl });
+    if (!response.ok) {
+      throw new Error(`SPARQL query failed: ${response.status} ${response.statusText}`);
+    }
 
-    // Serialize dataset to Turtle first
-    const writer = new Writer();
-    // Note: This is a simplified conversion
-    // In production, use proper dataset->triples conversion
-
-    // Parse into N3 store
-    // (N3 doesn't have built-in SPARQL, but we can do basic triple matching)
-
-    // For full SPARQL support, we'd use rdflib.js or comunica
-    // This is a simplified implementation
-    return JSON.stringify({
-      error: "Full SPARQL execution requires comunica integration",
-      hint: "Use sparql_match for basic triple pattern matching",
-    });
+    // Parse and return the SPARQL results
+    const results = await response.json();
+    return JSON.stringify(results, null, 2);
   } catch (error) {
     return JSON.stringify({
       error: error instanceof Error ? error.message : "Unknown error",
@@ -571,6 +569,73 @@ async function main() {
               type: "text",
               text: JSON.stringify({
                 error: error instanceof Error ? error.message : "List failed",
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // Tool: Execute SPARQL query
+  server.registerTool(
+    "sparql_query",
+    {
+      description:
+        "Execute a full SPARQL query against a SPARQL endpoint over HTTP. Supports SELECT, ASK, CONSTRUCT, and DESCRIBE queries.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          endpointUrl: {
+            type: "string",
+            description: "URL of the SPARQL endpoint (e.g., http://localhost:3030/dataset/sparql)",
+          },
+          query: {
+            type: "string",
+            description: "SPARQL query string (SELECT, ASK, CONSTRUCT, or DESCRIBE)",
+          },
+        },
+        required: ["endpointUrl", "query"],
+      },
+    },
+    async (params) => {
+      if (!solidSession) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                error: "Not authenticated. Call solid_init first.",
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      try {
+        const result = await executeSparqlQuery(
+          params.endpointUrl as string,
+          params.query as string,
+          solidSession
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: result,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                error: error instanceof Error ? error.message : "Query failed",
               }),
             },
           ],

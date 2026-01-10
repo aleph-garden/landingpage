@@ -1,6 +1,5 @@
 use clap::{Parser, Subcommand};
-use oxigraph::store::Store;
-use std::net::SocketAddr;
+use std::process::Command;
 
 #[derive(Parser)]
 #[command(name = "aleph-tui")]
@@ -28,27 +27,27 @@ enum Commands {
     },
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Sparql { port, host, data_dir } => {
             println!("Starting Oxigraph SPARQL server...");
             println!("Data directory: {}", data_dir);
+            println!("SPARQL endpoint: http://{}:{}/query", host, port);
+            println!("Server running at http://{}:{}", host, port);
 
-            // Create the store
-            let store = Store::open(&data_dir)?;
+            let status = Command::new("oxigraph")
+                .arg("serve")
+                .arg("--location")
+                .arg(&data_dir)
+                .arg("--bind")
+                .arg(format!("{}:{}", host, port))
+                .status()?;
 
-            let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
-            println!("SPARQL endpoint: http://{}/query", addr);
-            println!("Server running at http://{}", addr);
-
-            // Start the HTTP server
-            oxigraph::server::Server::new(store)
-                .bind(addr)?
-                .serve()
-                .await?;
+            if !status.success() {
+                anyhow::bail!("oxigraph server exited with status: {}", status);
+            }
 
             Ok(())
         }

@@ -25,12 +25,8 @@
             (rust-bin.stable.latest.default.override {
               extensions = [ "rust-src" "rust-analyzer" ];
             })
-            clang
-            pkg-config
+            oxigraph
           ];
-
-          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-          BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${pkgs.lib.getVersion pkgs.clang}/include";
         };
 
         packages.default = pkgs.rustPlatform.buildRustPackage {
@@ -43,11 +39,13 @@
           };
 
           nativeBuildInputs = with pkgs; [
-            clang
-            pkg-config
+            pkgs.makeWrapper
           ];
 
-          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+          postInstall = ''
+            wrapProgram $out/bin/aleph-tui \
+              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.oxigraph ]}
+          '';
         };
       };
     };
