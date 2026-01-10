@@ -39,6 +39,7 @@ The agent runs as a skill within Claude Code and writes semantic triples to your
 ## Repository Structure
 
 - **`agent/`** - RDF learning agent (Claude Code skill)
+- **`mcp-server/`** - Model Context Protocol server for Solid Pod operations
 - **`rdf-graph-viewer/`** - Graph visualization frontend (early development)
 - **`aleph.wiki/`** - Future Solid app implementation
 - **`.claude/`** - Claude Code configuration for this repository
@@ -83,10 +84,11 @@ The graph structure allows filtering by session, time period, topic hierarchy, o
 
 ## Roadmap
 
+- [ ] MCP server integration for agent-to-Pod communication
+- [ ] SPARQL query capabilities via MCP
 - [ ] Solid Protocol backend integration
 - [ ] Web-based graph visualizer (Solid app)
 - [ ] Real-time updates via WebSocket notifications
 - [ ] Multi-user collaboration features
-- [ ] SPARQL query interface
 - [ ] Advanced graph layouts (hierarchical, temporal, semantic)
 - [ ] Export/import functionality

@@ -27,9 +27,19 @@ it deleted (which it never does, it only marks them as inactive somehow).
 
 ### File Location
 
-Always write to `~/aleph-wiki/index.ttl` regardless of current working directory.
+**When MCP server is available** (check for `mcp__aleph-wiki-solid` tools):
 
-Ontologies should be saved to `~/aleph-wiki/ontologies/`.
+1. **Initialize connection** using `mcp__aleph-wiki-solid__solid_init` with Pod URL
+2. **Read existing graph** using `mcp__aleph-wiki-solid__rdf_read`
+3. **Query concepts** using `mcp__aleph-wiki-solid__sparql_match`
+4. **Append triples** using `mcp__aleph-wiki-solid__rdf_append`
+
+**When MCP server is NOT available** (fallback to local filesystem):
+
+- Always write to `~/aleph-wiki/index.ttl` regardless of current working directory
+- Ontologies should be saved to `~/aleph-wiki/ontologies/`
+
+**MCP Mode is preferred** when available as it enables Solid Pod integration and true decentralized storage.
 
 ## Agent Identity
 
