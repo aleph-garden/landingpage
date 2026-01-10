@@ -1045,7 +1045,14 @@ INSERT DATA {
     if (previousData && this.simulation) {
       const positionMap = new Map();
       this.simulation.nodes().forEach(node => {
-        positionMap.set(node.id, { x: node.x, y: node.y, vx: node.vx, vy: node.vy });
+        positionMap.set(node.id, {
+          x: node.x,
+          y: node.y,
+          vx: node.vx,
+          vy: node.vy,
+          fx: node.fx,
+          fy: node.fy
+        });
       });
 
       // Apply saved positions to new data
@@ -1056,9 +1063,11 @@ INSERT DATA {
           node.y = saved.y;
           node.vx = 0;
           node.vy = 0;
-          // Pin the node position to prevent gravity movement
-          node.fx = saved.x;
-          node.fy = saved.y;
+          // Preserve user-pinned positions
+          if (saved.fx !== null && saved.fx !== undefined) {
+            node.fx = saved.fx;
+            node.fy = saved.fy;
+          }
         }
       });
     }
@@ -1182,7 +1191,8 @@ INSERT DATA {
       .call(d3.drag()
         .on('start', (event, d) => this.dragStarted(event, d))
         .on('drag', (event, d) => this.dragged(event, d))
-        .on('end', (event, d) => this.dragEnded(event, d)));
+        .on('end', (event, d) => this.dragEnded(event, d)))
+      .on('dblclick', (event, d) => this.nodeDoubleClicked(event, d));
 
     nodeEnter.append('circle')
       .attr('r', 0)
@@ -1305,8 +1315,15 @@ INSERT DATA {
 
   dragEnded(event, d) {
     if (!event.active) this.simulation.alphaTarget(0);
+    // Keep the node pinned where the user dragged it
+    // d.fx and d.fy remain set, preventing the node from drifting
+  }
+
+  nodeDoubleClicked(event, d) {
+    // Double-click to unpin a node and let it move freely
     d.fx = null;
     d.fy = null;
+    this.simulation.alpha(0.3).restart();
   }
 
   updateTimelineInfo() {
