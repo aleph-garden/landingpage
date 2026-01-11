@@ -22,12 +22,12 @@ You can create more pods via the registration interface:
 ### Config Options
 
 You can modify pod configurations by editing:
-- **Seeded pods**: `css-seeded-pods.json`
-- **Server config**: Update the `--seededPodConfigJson` flag in package.json
+- **Seeded pods**: `config/css-seeded-pods.json`
+- **Server config**: Update the `--seedConfig` flag in package.json
 
 ### Multiple Seeded Accounts with Pods
 
-To seed multiple accounts with their pods, modify `css-seeded-pods.json`:
+To seed multiple accounts with their pods, modify `config/css-seeded-pods.json`:
 
 ```json
 [
@@ -77,7 +77,7 @@ CSS provides several config presets:
 
 ### 1. Current Setup (File Storage + Seeded Pods)
 ```bash
--c @css:config/file.json --seededPodConfigJson css-seeded-pods.json
+-c @css:config/file.json --seedConfig config/css-seeded-pods.json
 ```
 - File-based storage
 - Pre-configured user accounts

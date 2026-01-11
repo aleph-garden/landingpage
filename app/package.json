@@ -9,8 +9,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "oxigraph": "oxigraph serve --location .oxigraph-data",
-    "solid": "npx -y @solid/community-server@7 -c @css:config/sparql-file-storage.json -f .solid-data/ -p 3000 --sparqlEndpoint http://localhost:7878/query --seedConfig css-seeded-pods.json",
+    "oxigraph": "oxigraph serve --location data/.oxigraph-data",
+    "solid": "npx -y @solid/community-server@7 -c @css:config/sparql-file-storage.json -f data/.solid-data/ -p 3000 --sparqlEndpoint http://localhost:7878/query --seedConfig config/css-seeded-pods.json",
     "dev:all": "concurrently \"npm run oxigraph\" \"npm run solid\" \"npm run dev\" --names \"oxigraph,solid,vite\" --prefix-colors \"yellow,blue,green\""
   },
   "devDependencies": {

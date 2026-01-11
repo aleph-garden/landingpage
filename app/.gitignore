@@ -13,8 +13,7 @@ dist-ssr
 *.local
 
 # Data directories
-.solid-data
-.oxigraph-data
+data/
 
 # Editor directories and files
 .vscode/*

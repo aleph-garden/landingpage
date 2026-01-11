@@ -27,8 +27,10 @@ WebID: http://localhost:3000/dev/profile/card#me
 
 ```
 app/
-├── css-seeded-pods.json      # Seeded account configuration
-├── .solid-data/              # CSS data storage (gitignored)
+├── config/
+│   └── css-seeded-pods.json  # Seeded account configuration
+├── data/
+│   └── .solid-data/          # CSS data storage (gitignored)
 ├── src/
 │   └── comunica-example.js   # SPARQL query examples
 ├── SOLID_SETUP.md            # Detailed setup documentation
@@ -68,7 +70,7 @@ See `src/comunica-example.js` for more examples.
 
 ### Adding More Seeded Accounts
 
-Edit `css-seeded-pods.json`:
+Edit `config/css-seeded-pods.json`:
 
 ```json
 [
